@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Teilnehmerliste</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F4F4F5; --surface:#FFFFFF; --ink:#18181B; --muted:#71717A; --line:#E4E4E7;
+  --btn:#18181B; --btn-ink:#FFFFFF; --check:#18181B; --check-ink:#FFFFFF; --danger:#B91C1C;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#09090B; --surface:#18181B; --ink:#FAFAFA; --muted:#A1A1AA; --line:#27272A;
+    --btn:#FAFAFA; --btn-ink:#09090B; --check:#FAFAFA; --check-ink:#09090B; --danger:#F87171;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#09090B; --surface:#18181B; --ink:#FAFAFA; --muted:#A1A1AA; --line:#27272A;
+  --btn:#FAFAFA; --btn-ink:#09090B; --check:#FAFAFA; --check-ink:#09090B; --danger:#F87171;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,summary{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.wrap{max-width:680px;margin:0 auto;padding:0 16px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px}
+h1{margin:0;font-size:17px;font-weight:600}
+.sub{margin:0;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.actions{display:flex;gap:8px;align-items:center}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;
+  border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap;
+}
+.btn.primary{background:var(--btn);border-color:var(--btn);color:var(--btn-ink)}
+
+.menu{position:relative}
+.menu summary{list-style:none;width:38px;height:38px;border-radius:6px;border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;font-size:18px;line-height:1;background:var(--surface)}
+.menu summary::-webkit-details-marker{display:none}
+.menu-pop{position:absolute;right:0;top:44px;width:min(280px,86vw);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px;z-index:20;box-shadow:0 10px 30px -12px rgba(0,0,0,.3)}
+.menu-pop button{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 12px;border-radius:4px;cursor:pointer;font-size:15px}
+.menu-pop button:hover{background:var(--bg)}
+.menu-pop button.armed{background:var(--danger);color:#fff}
+.menu-pop .info{padding:8px 12px;color:var(--muted);font-size:13px;border-bottom:1px solid var(--line);margin-bottom:4px}
+
+.demo{font-size:13px;color:var(--muted);padding:0 0 8px}
+.demo button{background:none;border:0;padding:0;margin-left:6px;text-decoration:underline;cursor:pointer;font-size:13px;color:var(--ink)}
+
+.search input{width:100%;min-height:40px;border-radius:6px;border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:16px;margin-bottom:4px}
+.search input::placeholder{color:var(--muted)}
+
+.tabs{display:flex;gap:20px;overflow-x:auto;scrollbar-width:none;margin-top:4px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;background:none;border:0;border-bottom:2px solid transparent;padding:10px 0 10px;cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);white-space:nowrap}
+.tab small{font-size:12px;margin-left:6px;font-variant-numeric:tabular-nums}
+.tab[aria-current="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+
+main{padding:16px 0 80px}
+.ghead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 10px}
+h2{margin:0;font-size:15px;font-weight:600}
+.count{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+.toggle input{width:16px;height:16px;accent-color:var(--ink);margin:0}
+
+ul.list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+ul.list li+li{border-top:1px solid var(--line)}
+.row{width:100%;display:flex;align-items:center;gap:14px;min-height:52px;padding:8px 14px;background:transparent;border:0;text-align:left;cursor:pointer}
+.box{flex:none;width:22px;height:22px;border:1.5px solid var(--muted);border-radius:4px;display:grid;place-items:center}
+.row.on .box{background:var(--check);border-color:var(--check)}
+.row.on .box::after{content:"";width:11px;height:6px;border-left:2px solid var(--check-ink);border-bottom:2px solid var(--check-ink);transform:translateY(-1px) rotate(-45deg)}
+.row .name{font-size:16px;overflow-wrap:anywhere}
+.row .grp{display:block;font-size:12px;color:var(--muted)}
+.row.on .name{color:var(--muted)}
+.none{padding:18px 14px;color:var(--muted);font-size:14px}
+
+.empty{padding:48px 0;display:flex;gap:10px;flex-wrap:wrap}
+.err{color:var(--danger);font-size:14px;margin:12px 0 0}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <div>
+        <h1>Teilnehmerliste</h1>
+        <p class="sub" id="sub"></p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="importBtn" type="button">Excel laden</button>
+        <details class="menu" id="menu">
+          <summary aria-label="Weitere Aktionen">⋯</summary>
+          <div class="menu-pop" id="menuPop"></div>
+        </details>
+      </div>
+    </div>
+    <div class="demo" id="demoNote" hidden>Demo-Daten<button type="button" id="leaveDemo">Beenden</button></div>
+    <div id="controls" hidden>
+      <div class="search"><input type="search" id="q" placeholder="Suchen" autocomplete="off" aria-label="In allen Gruppen suchen"></div>
+      <nav class="tabs" id="groups" aria-label="Gruppen"></nav>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+<input type="file" id="file" accept=".xlsx,.xls,.xlsm,.ods,.csv" hidden>
+
+<script>
+(function(){
+  "use strict";
+  var PREFIX = "teilnehmerliste.v1.";
+  var store = {
+    get: function(k){ try{ var v = localStorage.getItem(PREFIX+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+    set: function(k,v){ try{ localStorage.setItem(PREFIX+k, JSON.stringify(v)); }catch(e){} },
+    del: function(k){ try{ localStorage.removeItem(PREFIX+k); }catch(e){} }
+  };
+
+  var mode = store.get("mode") === "demo" ? "demo" : "real";
+  var data = store.get(mode);
+  var active = store.get("active." + mode);
+  var hideDone = !!store.get("hideDone");
+  var query = "";
+  var importError = "";
+
+  var $ = function(id){ return document.getElementById(id); };
+  var uid = function(){ return Math.random().toString(36).slice(2,10); };
+  var esc = function(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+  var norm = function(s){ return String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim(); };
+  var stats = function(g){ var d=0; g.people.forEach(function(p){ if(p.checked) d++; }); return {d:d, t:g.people.length}; };
+
+  function save(){
+    store.set(mode, data);
+    store.set("active." + mode, active);
+    store.set("mode", mode);
+    store.set("hideDone", hideDone);
+  }
+
+  /* Excel-Import: ein Arbeitsblatt = eine Gruppe */
+  var HEADER = /^(name|namen|vorname|nachname|teilnehmer|teilnehmerin|teilnehmende|teilnehmer\*in|person)$/;
+  function parseWorkbook(wb){
+    var groups = [];
+    wb.SheetNames.forEach(function(sn){
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, blankrows:false, defval:""});
+      if(!rows.length) return;
+      var head = rows[0].map(function(c){ return String(c).trim().toLowerCase(); });
+      var hasHeader = head.some(function(h){ return HEADER.test(h); });
+      var vi = head.indexOf("vorname"), ni = head.indexOf("nachname");
+      var nameIdx = head.findIndex(function(h){ return /^(name|namen|teilnehmer|teilnehmerin|teilnehmende|teilnehmer\*in|person)$/.test(h); });
+      var people = [];
+      rows.slice(hasHeader ? 1 : 0).forEach(function(r){
+        var name = "";
+        if(hasHeader && vi >= 0 && ni >= 0) name = (String(r[vi]).trim() + " " + String(r[ni]).trim()).trim();
+        else if(hasHeader && nameIdx >= 0) name = String(r[nameIdx]).trim();
+        else { for(var i=0;i<r.length;i++){ var c = String(r[i]).trim(); if(c){ name = c; break; } } }
+        if(name) people.push({id:uid(), name:name, checked:false});
+      });
+      if(people.length) groups.push({id:uid(), name:sn.trim() || "Gruppe", people:people});
+    });
+    return groups;
+  }
+
+  function mergeChecks(newGroups, old){
+    if(!old || !old.groups) return;
+    var map = {};
+    old.groups.forEach(function(g){ g.people.forEach(function(p){ if(p.checked) map[norm(g.name)+"|"+norm(p.name)] = true; }); });
+    newGroups.forEach(function(g){ g.people.forEach(function(p){ if(map[norm(g.name)+"|"+norm(p.name)]) p.checked = true; }); });
+  }
+
+  function handleFile(file){
+    importError = "";
+    if(typeof XLSX === "undefined"){ importError = "Excel-Bibliothek nicht geladen. Seite neu laden."; render(); return; }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var wb = XLSX.read(new Uint8Array(e.target.result), {type:"array"});
+        var groups = parseWorkbook(wb);
+        if(!groups.length){ importError = "Keine Namen in „" + file.name + "“ gefunden. Erwartet: ein Arbeitsblatt pro Gruppe, Namen in der ersten Spalte."; render(); return; }
+        mergeChecks(groups, store.get("real"));
+        mode = "real";
+        data = {groups:groups, source:file.name, importedAt:Date.now()};
+        active = groups[0].id;
+        query = ""; $("q").value = "";
+        save(); render();
+      }catch(err){
+        importError = "Datei konnte nicht gelesen werden.";
+        render();
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  /* Demo */
+  var FIRST = ["Lea","Mia","Emma","Hannah","Sophie","Lina","Marie","Clara","Paula","Greta","Mila","Jana","Nele","Amelie","Luisa","Zoe","Ben","Paul","Finn","Leon","Noah","Elias","Jonas","Luca","Mats","Theo","Anton","Emil","Ole","Yusuf","Aylin","Elif","Sara","Milan","Deniz","Kian","Malik","Selin","Jamal","Ivana"];
+  var LAST = ["Müller","Schmidt","Schneider","Fischer","Weber","Meyer","Wagner","Becker","Schulz","Hoffmann","Koch","Richter","Klein","Wolf","Schröder","Neumann","Braun","Zimmermann","Krüger","Hartmann","Lange","Werner","Lehmann","Yilmaz","Kaya","Nowak","Peters","Brandt","Demir","Öztürk"];
+  var GROUPS = ["Gruppe A","Gruppe B","Gruppe C","Gruppe D","Gruppe E","Gruppe F"];
+  function rnd(n){ return Math.floor(Math.random()*n); }
+  function makeDemo(){
+    var used = {};
+    var groups = GROUPS.map(function(gn){
+      var size = 8 + rnd(15), people = [];
+      while(people.length < size){
+        var n = FIRST[rnd(FIRST.length)] + " " + LAST[rnd(LAST.length)];
+        if(used[n]) continue; used[n] = 1;
+        people.push({id:uid(), name:n, checked:Math.random() < 0.3});
+      }
+      people.sort(function(a,b){ return a.name.split(" ")[1].localeCompare(b.name.split(" ")[1], "de"); });
+      return {id:uid(), name:gn, people:people};
+    });
+    return {groups:groups, source:"Demo-Daten", importedAt:Date.now()};
+  }
+  function startDemo(fresh){
+    mode = "demo";
+    data = (!fresh && store.get("demo")) || makeDemo();
+    active = fresh ? null : store.get("active.demo");
+    if(!data.groups.some(function(g){ return g.id === active; })) active = data.groups[0].id;
+    query = ""; $("q").value = "";
+    save(); render();
+  }
+  function leaveDemo(){
+    mode = "real";
+    data = store.get("real");
+    active = store.get("active.real");
+    query = ""; $("q").value = "";
+    save(); render();
+  }
+
+  function toggle(gid, pid){
+    var g = data.groups.find(function(x){ return x.id === gid; }); if(!g) return;
+    var p = g.people.find(function(x){ return x.id === pid; }); if(!p) return;
+    p.checked = !p.checked;
+    save(); render();
+  }
+
+  function armed(btn, fn){
+    if(btn.classList.contains("armed")){ fn(); return; }
+    var label = btn.textContent;
+    btn.classList.add("armed"); btn.textContent = "Zum Bestätigen erneut tippen";
+    setTimeout(function(){ if(btn.isConnected){ btn.classList.remove("armed"); btn.textContent = label; } }, 3000);
+  }
+
+  function rowHtml(g, p, showGroup){
+    return '<li><button type="button" class="row' + (p.checked ? ' on' : '') + '" data-g="' + g.id + '" data-p="' + p.id + '" role="checkbox" aria-checked="' + (!!p.checked) + '">' +
+      '<span class="box" aria-hidden="true"></span>' +
+      '<span class="name">' + esc(p.name) + (showGroup ? '<span class="grp">' + esc(g.name) + '</span>' : '') + '</span></button></li>';
+  }
+
+  function renderMenu(){
+    var has = data && data.groups && data.groups.length;
+    var h = "";
+    if(has) h += '<div class="info">' + esc(data.source) + '</div>';
+    if(mode === "demo"){
+      h += '<button type="button" data-act="reroll">Neue Demo-Daten</button>';
+      h += '<button type="button" data-act="leave">Demo beenden</button>';
+    } else {
+      h += '<button type="button" data-act="demo">Demo laden</button>';
+    }
+    if(has){
+      h += '<button type="button" data-act="resetGroup" data-confirm>Gruppe zurücksetzen</button>';
+      h += '<button type="button" data-act="resetAll" data-confirm>Alle zurücksetzen</button>';
+      if(mode === "real") h += '<button type="button" data-act="wipe" data-confirm>Liste löschen</button>';
+    }
+    $("menuPop").innerHTML = h;
+  }
+
+  function render(){
+    var has = data && data.groups && data.groups.length;
+    $("demoNote").hidden = mode !== "demo";
+    $("controls").hidden = !has;
+    renderMenu();
+
+    if(!has){
+      $("sub").textContent = "";
+      $("main").innerHTML = '<div class="empty"><button type="button" class="btn primary" data-act="import">Excel laden</button><button type="button" class="btn" data-act="demo">Demo laden</button></div>' +
+        (importError ? '<p class="err">' + esc(importError) + '</p>' : '');
+      return;
+    }
+
+    if(!data.groups.some(function(g){ return g.id === active; })) active = data.groups[0].id;
+
+    var D = 0, T = 0;
+    data.groups.forEach(function(g){ var s = stats(g); D += s.d; T += s.t; });
+    $("sub").textContent = D + " / " + T;
+
+    $("groups").innerHTML = data.groups.map(function(g){
+      var s = stats(g);
+      return '<button type="button" class="tab" data-group="' + g.id + '" aria-current="' + (g.id === active && !query) + '">' + esc(g.name) + '<small>' + s.d + '/' + s.t + '</small></button>';
+    }).join("");
+
+    var html = importError ? '<p class="err">' + esc(importError) + '</p>' : "";
+
+    if(query){
+      var q = norm(query), hits = [];
+      data.groups.forEach(function(g){ g.people.forEach(function(p){ if(norm(p.name).indexOf(q) !== -1) hits.push([g,p]); }); });
+      html += '<div class="ghead"><h2>Suche</h2><span class="count">' + hits.length + '</span></div>';
+      html += hits.length
+        ? '<ul class="list">' + hits.map(function(h){ return rowHtml(h[0], h[1], true); }).join("") + '</ul>'
+        : '<ul class="list"><li class="none">Keine Treffer</li></ul>';
+    } else {
+      var g = data.groups.find(function(x){ return x.id === active; });
+      var s = stats(g);
+      var list = hideDone ? g.people.filter(function(p){ return !p.checked; }) : g.people;
+      html += '<div class="ghead"><h2>' + esc(g.name) + ' <span class="count">' + s.d + ' / ' + s.t + '</span></h2>' +
+        '<label class="toggle"><input type="checkbox" id="hideDone"' + (hideDone ? ' checked' : '') + '>Erledigte ausblenden</label></div>';
+      html += list.length
+        ? '<ul class="list">' + list.map(function(p){ return rowHtml(g, p, false); }).join("") + '</ul>'
+        : '<ul class="list"><li class="none">Alles erledigt</li></ul>';
+    }
+    $("main").innerHTML = html;
+  }
+
+  $("importBtn").addEventListener("click", function(){ $("file").click(); });
+  $("file").addEventListener("change", function(e){ var f = e.target.files && e.target.files[0]; if(f) handleFile(f); e.target.value = ""; });
+  $("leaveDemo").addEventListener("click", leaveDemo);
+  $("q").addEventListener("input", function(e){ query = e.target.value.trim(); render(); });
+
+  $("groups").addEventListener("click", function(e){
+    var b = e.target.closest("[data-group]"); if(!b) return;
+    active = b.getAttribute("data-group"); query = ""; $("q").value = "";
+    save(); render(); window.scrollTo({top:0});
+  });
+
+  $("main").addEventListener("click", function(e){
+    var row = e.target.closest(".row");
+    if(row){ toggle(row.getAttribute("data-g"), row.getAttribute("data-p")); return; }
+    var a = e.target.closest("[data-act]");
+    if(a){ var act = a.getAttribute("data-act"); if(act === "import") $("file").click(); if(act === "demo") startDemo(false); }
+  });
+  $("main").addEventListener("change", function(e){
+    if(e.target.id === "hideDone"){ hideDone = e.target.checked; save(); render(); }
+  });
+
+  $("menuPop").addEventListener("click", function(e){
+    var b = e.target.closest("[data-act]"); if(!b) return;
+    var act = b.getAttribute("data-act");
+    var run = function(){
+      if(act === "demo") startDemo(false);
+      else if(act === "reroll") startDemo(true);
+      else if(act === "leave") leaveDemo();
+      else if(act === "resetGroup"){ var g = data.groups.find(function(x){ return x.id === active; }); if(g) g.people.forEach(function(p){ p.checked = false; }); save(); render(); }
+      else if(act === "resetAll"){ data.groups.forEach(function(g){ g.people.forEach(function(p){ p.checked = false; }); }); save(); render(); }
+      else if(act === "wipe"){ store.del("real"); store.del("active.real"); data = null; active = null; render(); }
+      $("menu").open = false;
+    };
+    if(b.hasAttribute("data-confirm")) armed(b, run); else run();
+  });
+
+  document.addEventListener("click", function(e){ if($("menu").open && !e.target.closest("#menu")) $("menu").open = false; });
+
+  render();
+})();
+</script>
+</body>
+</html>
