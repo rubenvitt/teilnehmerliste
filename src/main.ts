@@ -1,1 +1,4 @@
-document.body.textContent = "Teilnehmerliste";
+import "./style.css";
+import { init } from "./app";
+
+init();

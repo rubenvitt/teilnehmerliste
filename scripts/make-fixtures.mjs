@@ -35,3 +35,9 @@ writeFileSync(
   new URL("gruppe-c.csv", dir),
   "Vorname;Nachname\nJürgen;Größe\nÖzlem;Ärmel\n;\nRené;Çelik\n",
 );
+
+// Export aus deutschem Excel („CSV (Trennzeichen-getrennt)“): Windows-1252
+writeFileSync(
+  new URL("gruppe-d-cp1252.csv", dir),
+  Buffer.from("Name;Vorname\nMüller;Jörg\nStraße;Anaïs\n", "latin1"),
+);

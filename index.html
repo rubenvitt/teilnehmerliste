@@ -9,5 +9,30 @@
 <script type="module" src="/src/main.ts"></script>
 </head>
 <body>
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <div>
+        <h1>Teilnehmerliste</h1>
+        <p class="sub" id="sub"></p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="importBtn" type="button">Excel laden</button>
+        <details class="menu" id="menu">
+          <summary aria-label="Weitere Aktionen">⋯</summary>
+          <div class="menu-pop" id="menuPop"></div>
+        </details>
+      </div>
+    </div>
+    <div class="demo" id="demoNote" hidden>Demo-Daten<button type="button" id="leaveDemo">Beenden</button></div>
+    <div id="controls" hidden>
+      <div class="search"><input type="search" id="q" placeholder="Suchen" autocomplete="off" aria-label="In allen Gruppen suchen"></div>
+      <nav class="tabs" id="groups" aria-label="Gruppen"></nav>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+<input type="file" id="file" accept=".xlsx,.xls,.xlsm,.ods,.csv" hidden>
 </body>
 </html>

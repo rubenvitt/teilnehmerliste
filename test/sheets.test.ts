@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { readWorkbook } from "../src/import/sheets";
+import { readWorkbook, UnreadableFileError } from "../src/import/sheets";
 import { parseSheets } from "../src/model/parse";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url));
@@ -30,6 +30,20 @@ describe("Import aus Dateien", () => {
 
   it("liest CSV mit Semikolon und Umlauten, Gruppe heißt wie die Datei", () => {
     expect(load("gruppe-c.csv")).toEqual([["gruppe-c", ["Jürgen Größe", "Özlem Ärmel", "René Çelik"]]]);
+  });
+
+  it("liest CSV in Windows-1252 aus deutschem Excel", () => {
+    expect(load("gruppe-d-cp1252.csv")).toEqual([["gruppe-d-cp1252", ["Jörg Müller", "Anaïs Straße"]]]);
+  });
+
+  it("lehnt eine .xlsx ab, die keine ist", () => {
+    const junk = new TextEncoder().encode("das ist keine Tabelle");
+    expect(() => readWorkbook(XLSX, junk, "kaputt.xlsx")).toThrow(UnreadableFileError);
+  });
+
+  it("behält führende Nullen und lange Zahlen in CSV als Text", () => {
+    const csv = new TextEncoder().encode("Name\n007 Agent\n");
+    expect(parseSheets(readWorkbook(XLSX, csv, "x.csv"))[0]!.people[0]!.name).toBe("007 Agent");
   });
 
   it("meldet keine Gruppen für Dateien ohne Namen", () => {
