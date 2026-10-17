@@ -21,6 +21,8 @@ let query = "";
 let importError = "";
 let busy = false;
 
+export const hasList = (): boolean => !!data?.groups.length;
+
 function save(): void {
   if (data) storage.setList(mode, data);
   storage.setActive(mode, active);
