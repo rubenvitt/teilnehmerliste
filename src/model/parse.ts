@@ -4,6 +4,9 @@ import { cell, norm, uid } from "./normalize";
 const NAME = /^(name|namen|teilnehmer|teilnehmerin|teilnehmende|teilnehmer\*in|teilnehmer:in|person)$/;
 const FIRST = /^(vorname|vornamen)$/;
 const LAST = /^(nachname|nachnamen|familienname|zuname)$/;
+/** Spalte mit Häkchen, etwa aus einem früheren Export. */
+const CHECK = /^(abgehakt|da|anwesend|erledigt|check-in|checkin)$/;
+const YES = /^(x|ja|j|1|true|wahr|✓|✔|☑)$/;
 
 /** So viele Zeilen werden nach einer Kopfzeile durchsucht (z. B. unter einer Titelzeile). */
 const HEADER_SCAN = 5;
@@ -13,6 +16,7 @@ interface Columns {
   name: number;
   first: number;
   last: number;
+  check: number;
 }
 
 function findColumns(rows: unknown[][]): Columns | null {
@@ -22,7 +26,8 @@ function findColumns(rows: unknown[][]): Columns | null {
     const name = head.findIndex((h) => NAME.test(h));
     const first = head.findIndex((h) => FIRST.test(h));
     const last = head.findIndex((h) => LAST.test(h));
-    if (name >= 0 || first >= 0 || last >= 0) return { headerRow: r, name, first, last };
+    const check = head.findIndex((h) => CHECK.test(h));
+    if (name >= 0 || first >= 0 || last >= 0) return { headerRow: r, name, first, last, check };
   }
   return null;
 }
@@ -60,7 +65,8 @@ export function parseSheets(sheets: SheetRows[], id: IdFn = uid): Group[] {
     const people: Person[] = [];
     for (const row of body) {
       const name = nameFrom(row, cols);
-      if (name) people.push({ id: id(), name, checked: false });
+      const checked = !!cols && cols.check >= 0 && YES.test(norm(cell(row[cols.check])));
+      if (name) people.push({ id: id(), name, checked });
     }
     if (people.length) groups.push({ id: id(), name: cell(sheet.name) || "Gruppe", people });
   }

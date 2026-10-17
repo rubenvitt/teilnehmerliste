@@ -72,4 +72,15 @@ describe("parseSheets", () => {
     expect(new Set(people.map((p) => p.id)).size).toBe(2);
     expect(people.every((p) => !p.checked)).toBe(true);
   });
+
+  it("übernimmt Häkchen aus einer Spalte „Abgehakt“", () => {
+    const rows = [["Name", "Abgehakt"], ["Lea", "x"], ["Ben", ""], ["Ida", "Ja"], ["Ole", "nein"]];
+    const groups = parseSheets([{ name: "A", rows }], ids());
+    expect(groups[0]!.people.map((p) => [p.name, p.checked])).toEqual([
+      ["Lea", true],
+      ["Ben", false],
+      ["Ida", true],
+      ["Ole", false],
+    ]);
+  });
 });

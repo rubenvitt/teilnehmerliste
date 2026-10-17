@@ -1,4 +1,4 @@
-import { readFile } from "./import/load";
+import { downloadExport, readFile } from "./import/load";
 import { DEMO_SOURCE, makeDemo } from "./model/demo";
 import { mergeChecks } from "./model/merge";
 import { norm } from "./model/normalize";
@@ -112,6 +112,17 @@ function resetAll(): void {
   render();
 }
 
+async function exportList(): Promise<void> {
+  if (!data) return;
+  try {
+    await downloadExport(data);
+  } catch (err) {
+    console.error(err);
+    importError = "Export fehlgeschlagen.";
+    render();
+  }
+}
+
 function wipe(): void {
   storage.delList("real");
   data = null;
@@ -161,6 +172,7 @@ function renderMenu(has: boolean): void {
     h += `<button type="button" data-act="demo">Demo laden</button>`;
   }
   if (has) {
+    h += `<button type="button" data-act="export">Als Excel exportieren</button>`;
     h += `<button type="button" data-act="resetGroup" data-confirm>Gruppe zurücksetzen</button>`;
     h += `<button type="button" data-act="resetAll" data-confirm>Alle zurücksetzen</button>`;
     if (mode === "real") h += `<button type="button" data-act="wipe" data-confirm>Liste löschen</button>`;
@@ -282,6 +294,7 @@ export function init(): void {
       demo: () => startDemo(false),
       reroll: () => startDemo(true),
       leave: leaveDemo,
+      export: () => void exportList(),
       resetGroup,
       resetAll,
       wipe,
